@@ -1,3 +1,12 @@
+/*
+* Wiring, Arduino Uno/Nano
+* MOSI: 11
+* MISO: 12
+* SCK: 13
+* CE: 7
+* CSN: 8
+* 
+*/
 #include <Arduino.h>
 #include <Wire.h>
 #include <SSD1306Ascii.h>
@@ -33,7 +42,7 @@ void Nrf24l01_Transmitter_Init(void);
 void Nrf24l01_Cont_Transmit(void);
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Gpio_Init();
   Ssd1306_Oled_Init();
   Nrf24l01_Transmitter_Init();
@@ -45,8 +54,6 @@ void loop() {
 }
 
 void Gpio_Init(void) {
-  //pinMode(pin_Manual_Switch, INPUT_PULLUP); //INPUT => reverse logic!
-  //pinMode(pin_Reed_Switch, INPUT_PULLUP); //INPUT => reverse logic!
   pinMode(PIN_NRF24L01_CE, OUTPUT);
   pinMode(PIN_NRF24L01_CSN, OUTPUT);
   pinMode(pin_Status_Led, OUTPUT);
@@ -61,7 +68,7 @@ void Ssd1306_Oled_Init(void) {
   oled_display.setRow(0);
   oled_display.println(F("nRF24L01"));
   oled_display.println(F("Transmitter"));
-  delay(1000);
+  delay(3000);
   
 }
 
@@ -73,6 +80,8 @@ void Nrf24l01_Transmitter_Init(void) {
   oled_display.print(F("Pipe: "));
   tempPointer=(char *)&pipe_address[0];
   oled_display.println(tempPointer);
+  Serial.print(F("Pipe: "));
+  Serial.println(tempPointer);
   radio.begin();
   //radio.setChannel(NRF24L01_COMM_CHANNEL);
   radio.setAutoAck(false);
@@ -86,6 +95,7 @@ void Nrf24l01_Transmitter_Init(void) {
   radio.stopListening();
   digitalWrite(pin_Status_Led, LOW);
   oled_display.print(F("Stop"));
+  Serial.println(F("Radio init done"));
   delay(1000);
 }
 
@@ -95,13 +105,18 @@ void Nrf24l01_Cont_Transmit(void) {
   oled_display.setCol(0);
   oled_display.setRow(0);
   oled_display.println(F("Sending    "));
+  Serial.print(F("Sending: "));
   
   //unsigned long start_time = micros();
   ultoa(packet_counter,transmit_str,10);
+  Serial.print(transmit_str);
+  Serial.print(F(" "));
   if (!radio.write( &transmit_str, sizeof(transmit_str) )){
     oled_display.print(F("Failed    "));
+    Serial.println(F("Failed"));
   }
   else {
+    Serial.println(F("Sent"));
     oled_display.setCol(0);
     oled_display.setRow(0);
     oled_display.println(F("Sent      "));
