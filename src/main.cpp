@@ -17,10 +17,10 @@
 
 #define OLED_I2C_ADDR 0x3C /* OLED module I2C address */
 
-#define PIN_NRF24L01_CE 7
-#define PIN_NRF24L01_CSN 8
+#define PIN_NRF24L01_CE 9
+#define PIN_NRF24L01_CSN 10
 #define PIPE_NUMBER 0
-#define NRF24L01_COMM_CHANNEL 124
+#define NRF24L01_COMM_CHANNEL 124U
 
 //Set up OLED display
 SSD1306AsciiWire oled_display;
@@ -32,7 +32,8 @@ int pin_Status_Led = LED_BUILTIN;
 unsigned long packet_counter = 1;
 
 //address through which two modules communicate.
-uint8_t pipe_address[6] = "N0001";
+const uint8_t pipe_address[6] = "C2C2C";
+const uint64_t hex_address = 0xC2C2C2C2C2LL;
 
 char transmit_str[12];
 
@@ -54,8 +55,8 @@ void loop() {
 }
 
 void Gpio_Init(void) {
-  pinMode(PIN_NRF24L01_CE, OUTPUT);
-  pinMode(PIN_NRF24L01_CSN, OUTPUT);
+  //pinMode(PIN_NRF24L01_CE, OUTPUT);
+  //pinMode(PIN_NRF24L01_CSN, OUTPUT);
   pinMode(pin_Status_Led, OUTPUT);
   digitalWrite(pin_Status_Led, LOW);
 }
@@ -82,15 +83,22 @@ void Nrf24l01_Transmitter_Init(void) {
   oled_display.println(tempPointer);
   Serial.print(F("Pipe: "));
   Serial.println(tempPointer);
-  radio.begin();
+  while(radio.begin()==false)
+  {
+    Serial.println(F("Radio begin failed"));
+    oled_display.println(F("Radio begin failed"));
+    delay(1000);
+  }
   //radio.setChannel(NRF24L01_COMM_CHANNEL);
   radio.setAutoAck(false);
-  radio.setPALevel(RF24_PA_MAX);
+  radio.setPALevel(RF24_PA_LOW);
   radio.setDataRate(RF24_250KBPS);
-  radio.setCRCLength(RF24_CRC_8);
-  radio.disableDynamicPayloads();
-  radio.setRetries(10,15);
-  radio.openWritingPipe(pipe_address);
+  //radio.setCRCLength(RF24_CRC_8);
+  //radio.disableDynamicPayloads();
+  radio.setRetries(15,15);
+  radio.setPayloadSize(sizeof(transmit_str));
+  //radio.openWritingPipe(pipe_address);
+  radio.openWritingPipe(hex_address);
   oled_display.print(F("Open "));
   radio.stopListening();
   digitalWrite(pin_Status_Led, LOW);
@@ -100,8 +108,7 @@ void Nrf24l01_Transmitter_Init(void) {
 }
 
 void Nrf24l01_Cont_Transmit(void) {
-  //Read the data if available in buffer
-  //oled_display.clear();
+  radio.stopListening();
   oled_display.setCol(0);
   oled_display.setRow(0);
   oled_display.println(F("Sending    "));
@@ -111,6 +118,7 @@ void Nrf24l01_Cont_Transmit(void) {
   ultoa(packet_counter,transmit_str,10);
   Serial.print(transmit_str);
   Serial.print(F(" "));
+  digitalWrite(pin_Status_Led, HIGH);
   if (!radio.write( &transmit_str, sizeof(transmit_str) )){
     oled_display.print(F("Failed    "));
     Serial.println(F("Failed"));
@@ -125,5 +133,6 @@ void Nrf24l01_Cont_Transmit(void) {
     oled_display.print(transmit_str);
     packet_counter++;
   }
+  digitalWrite(pin_Status_Led, LOW);
   delay(5000);
 }
